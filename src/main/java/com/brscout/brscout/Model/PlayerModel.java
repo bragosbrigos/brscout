@@ -15,21 +15,31 @@ public class PlayerModel {
     private String nation;
     private String position;
     private Integer age;
+    private Integer rating;
+    private Integer goals;
+    private Integer assists;
 
     public PlayerModel() {
     }
 
-    public PlayerModel(String name, String teamName, int number, String nation, String position, Integer age) {
+    public PlayerModel(String name, String teamName, int number, String nation, String position, Integer age, Integer rating, Integer goals, Integer assists) {
         this.name = name;
         this.teamName = teamName;
         this.number = number;
         this.nation = nation;
         this.position = position;
         this.age = age;
+        this.rating = rating;
+        this.goals = goals;
+        this.assists = assists;
     }
 
     public Long getId() {
         return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getName() {
@@ -78,5 +88,29 @@ public class PlayerModel {
 
     public void setAge(Integer age) {
         this.age = age;
+    }
+
+    public Integer getRating() {
+        return rating;
+    }
+
+    public void setRating(Integer rating) {
+        this.rating = rating;
+    }
+
+    public Integer getGoals() {
+        return goals;
+    }
+
+    public void setGoals(Integer goals) {
+        this.goals = goals;
+    }
+
+    public Integer getAssists() {
+        return assists;
+    }
+
+    public void setAssists(Integer assists) {
+        this.assists = assists;
     }
 }
