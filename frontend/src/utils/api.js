@@ -1,55 +1,62 @@
-import axios from 'axios'
+const API_BASE_URL = '/player';
 
-const API_BASE_URL = '/player'
+export const api = {
+  // Buscar todos os jogadores ou filtrar por parâmetros
+  async getPlayers(filters = {}) {
+    const queryParams = new URLSearchParams();
+    if (filters.name) queryParams.append('name', filters.name);
+    if (filters.team) queryParams.append('team', filters.team);
+    if (filters.position) queryParams.append('position', filters.position);
+    if (filters.nation) queryParams.append('nation', filters.nation);
+    
+    const url = queryParams.toString() 
+      ? `${API_BASE_URL}?${queryParams.toString()}`
+      : API_BASE_URL;
+    
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Erro ao buscar jogadores');
+    return await response.json();
+  },
 
-export const fetchPlayers = async () => {
-  try {
-    const response = await axios.get(API_BASE_URL)
-    return response.data
-  } catch (error) {
-    console.error('Error fetching players:', error)
-    throw error
-  }
-}
+  // Buscar jogador por ID
+  async getPlayerById(id) {
+    const response = await fetch(`${API_BASE_URL}/${id}`);
+    if (!response.ok) throw new Error('Jogador não encontrado');
+    return await response.json();
+  },
 
-export const deletePlayer = async (id) => {
-  try {
-    await axios.delete(`${API_BASE_URL}/${id}`)
-  } catch (error) {
-    console.error('Error deleting player:', error)
-    throw error
-  }
-}
+  // Adicionar novo jogador
+  async addPlayer(playerData) {
+    const response = await fetch(API_BASE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(playerData),
+    });
+    if (!response.ok) throw new Error('Erro ao adicionar jogador');
+    return await response.json();
+  },
 
-export const savePlayer = async (playerData, editingPlayer = null) => {
-  try {
-    if (editingPlayer) {
-      await axios.put(`${API_BASE_URL}/${editingPlayer.id}`, {
-        ...playerData,
-        id: editingPlayer.id
-      })
-    } else {
-      await axios.post(API_BASE_URL, playerData)
-    }
-  } catch (error) {
-    console.error('Error saving player:', error)
-    throw error
-  }
-}
+  // Atualizar jogador
+  async updatePlayer(id, playerData) {
+    const response = await fetch(`${API_BASE_URL}/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(playerData),
+    });
+    if (!response.ok) throw new Error('Erro ao atualizar jogador');
+    return await response.json();
+  },
 
-export const getPositionColor = (position) => {
-  if (!position) return 'bg-gray-500'
-  const pos = position.toLowerCase()
-  if (pos.includes('goleir') || pos.includes('goalkeeper')) return 'bg-yellow-500'
-  if (pos.includes('defes') || pos.includes('defender') || pos.includes('back')) return 'bg-blue-500'
-  if (pos.includes('meio') || pos.includes('midfield')) return 'bg-green-500'
-  if (pos.includes('atac') || pos.includes('forward') || pos.includes('striker')) return 'bg-red-500'
-  return 'bg-gray-500'
-}
-
-export const getRatingColor = (rating) => {
-  if (rating >= 85) return 'text-green-500'
-  if (rating >= 75) return 'text-blue-500'
-  if (rating >= 65) return 'text-yellow-500'
-  return 'text-red-500'
-}
+  // Deletar jogador
+  async deletePlayer(id) {
+    const response = await fetch(`${API_BASE_URL}/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Erro ao deletar jogador');
+    return await response.text();
+  },
+};

@@ -1,173 +1,700 @@
-import { useState, useEffect } from 'react'
-import Header from './components/Header'
-import HomePage from './components/HomePage'
-import TeamsPage from './components/TeamsPage'
-import NationsPage from './components/NationsPage'
-import SearchPage from './components/SearchPage'
-import PlayerModal from './components/PlayerModal'
-import { fetchPlayers, deletePlayer, savePlayer } from './utils/api'
+import { useState, useEffect, useMemo, useContext, useRef } from 'react';
+import { ThemeContext } from './context/ThemeContext';
+import { api } from './utils/api';
 
-function App() {
-  const [darkMode, setDarkMode] = useState(false)
-  const [currentPage, setCurrentPage] = useState('home')
-  const [players, setPlayers] = useState([])
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedTeam, setSelectedTeam] = useState('')
-  const [selectedPosition, setSelectedPosition] = useState('')
-  const [selectedNation, setSelectedNation] = useState('')
-  const [showModal, setShowModal] = useState(false)
-  const [editingPlayer, setEditingPlayer] = useState(null)
-  const [formData, setFormData] = useState({
-    name: '',
-    teamName: '',
-    number: '',
-    nation: '',
-    position: '',
-    age: ''
-  })
+// ==================== CONSTANTES (do index.html) ====================
+const TEAMS = ["Flamengo", "Palmeiras", "São Paulo", "Corinthians", "Botafogo", "Grêmio", "Internacional", "Atlético-MG", "Cruzeiro", "Fluminense"];
+const NATIONS = ["Brasil", "Argentina", "Uruguai", "Colômbia", "Paraguai", "Chile", "Portugal", "Espanha", "Itália", "França"];
+const POSITIONS = ["GOL", "DEF", "MEI", "ATA"];
+const FLAGS = { Brasil:"🇧🇷", Argentina:"🇦🇷", Uruguai:"🇺🇾", Colômbia:"🇨🇴", Paraguai:"🇵🇾", Chile:"🇨🇱", Portugal:"🇹", Espanha:"🇪🇸", Itália:"🇮🇹", França:"🇫🇷" };
+const TEAM_COLORS = { "Flamengo":"from-red-600 to-black", "Palmeiras":"from-green-600 to-green-800", "São Paulo":"from-white to-red-600", "Corinthians":"from-white to-black", "Botafogo":"from-white to-black", "Grêmio":"from-blue-600 to-black", "Internacional":"from-red-600 to-white", "Atlético-MG":"from-black to-white", "Cruzeiro":"from-blue-600 to-white", "Fluminense":"from-green-600 to-red-600" };
 
-  useEffect(() => {
-    loadPlayers()
-  }, [])
+// ==================== ANIMATED COUNTER ====================
+function AnimatedCounter({ target, duration = 1500, prefix = "", suffix = "" }) {
+    const [count, setCount] = useState(0);
+    const [isVisible, setIsVisible] = useState(false);
+    const ref = useRef();
 
-  const loadPlayers = async () => {
-    try {
-      const data = await fetchPlayers()
-      setPlayers(data)
-    } catch (error) {
-      console.error('Error fetching players:', error)
-    }
-  }
+    useEffect(() => {
+        const observer = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting) setIsVisible(true);
+        }, { threshold: 0.2 });
+        if (ref.current) observer.observe(ref.current);
+        return () => observer.disconnect();
+    }, []);
 
-  const filteredPlayers = players.filter(player => {
-    const matchesSearch = player.name.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesTeam = selectedTeam === '' || player.teamName.toLowerCase().includes(selectedTeam.toLowerCase())
-    const matchesPosition = selectedPosition === '' || player.position.toLowerCase().includes(selectedPosition.toLowerCase())
-    const matchesNation = selectedNation === '' || player.nation.toLowerCase().includes(selectedNation.toLowerCase())
-    return matchesSearch && matchesTeam && matchesPosition && matchesNation
-  })
+    useEffect(() => {
+        if (!isVisible) return;
+        let start = 0;
+        const increment = target / (duration / 16);
+        const timer = setInterval(() => {
+            start += increment;
+            if (start >= target) { setCount(target); clearInterval(timer); }
+            else setCount(Math.floor(start));
+        }, 16);
+        return () => clearInterval(timer);
+    }, [isVisible, target, duration]);
 
-  const teams = [...new Set(players.map(p => p.teamName))].filter(Boolean).sort()
-  const positions = [...new Set(players.map(p => p.position))].filter(Boolean).sort()
-  const nations = [...new Set(players.map(p => p.nation))].filter(Boolean).sort()
-
-  const handleAddPlayer = () => {
-    setEditingPlayer(null)
-    setFormData({
-      name: '',
-      teamName: '',
-      number: '',
-      nation: '',
-      position: '',
-      age: ''
-    })
-    setShowModal(true)
-  }
-
-  const handleEditPlayer = (player) => {
-    setEditingPlayer(player)
-    setFormData({
-      name: player.name,
-      teamName: player.teamName,
-      number: player.number,
-      nation: player.nation,
-      position: player.position,
-      age: player.age || ''
-    })
-    setShowModal(true)
-  }
-
-  const handleDeletePlayer = async (id) => {
-    try {
-      await deletePlayer(id)
-      loadPlayers()
-    } catch (error) {
-      console.error('Error deleting player:', error)
-    }
-  }
-
-  const handleSubmit = async (data) => {
-    try {
-      await savePlayer(data, editingPlayer)
-      setShowModal(false)
-      loadPlayers()
-    } catch (error) {
-      console.error('Error saving player:', error)
-    }
-  }
-
-  const handleCloseModal = () => {
-    setShowModal(false)
-  }
-
-  return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}>
-      <Header 
-        darkMode={darkMode} 
-        setDarkMode={setDarkMode} 
-        currentPage={currentPage} 
-        setCurrentPage={setCurrentPage} 
-      />
-
-      <main className="container mx-auto px-4 py-8">
-        {currentPage === 'home' && (
-          <HomePage 
-            players={filteredPlayers}
-            darkMode={darkMode}
-            onAddPlayer={handleAddPlayer}
-            onEditPlayer={handleEditPlayer}
-            onDeletePlayer={handleDeletePlayer}
-          />
-        )}
-
-        {currentPage === 'teams' && (
-          <TeamsPage 
-            teams={teams}
-            players={players}
-            darkMode={darkMode}
-          />
-        )}
-
-        {currentPage === 'nations' && (
-          <NationsPage 
-            nations={nations}
-            players={players}
-            darkMode={darkMode}
-          />
-        )}
-
-        {currentPage === 'search' && (
-          <SearchPage 
-            filteredPlayers={filteredPlayers}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            selectedTeam={selectedTeam}
-            setSelectedTeam={setSelectedTeam}
-            selectedPosition={selectedPosition}
-            setSelectedPosition={setSelectedPosition}
-            selectedNation={selectedNation}
-            setSelectedNation={setSelectedNation}
-            teams={teams}
-            positions={positions}
-            nations={nations}
-            darkMode={darkMode}
-            onEditPlayer={handleEditPlayer}
-            onDeletePlayer={handleDeletePlayer}
-          />
-        )}
-      </main>
-
-      <PlayerModal 
-        showModal={showModal}
-        editingPlayer={editingPlayer}
-        formData={formData}
-        setFormData={setFormData}
-        darkMode={darkMode}
-        onClose={handleCloseModal}
-        onSubmit={handleSubmit}
-      />
-    </div>
-  )
+    return <span ref={ref}>{prefix}{count.toLocaleString()}{suffix}</span>;
 }
 
-export default App
+// ==================== PROGRESS BAR ====================
+function ProgressBar({ value, max, color = "bg-br-green", height = "h-2" }) {
+    const [width, setWidth] = useState(0);
+    useEffect(() => { setTimeout(() => setWidth(Math.min((value/max)*100, 100)), 400); }, [value, max]);
+    return (
+        <div className={`w-full bg-gray-200 dark:bg-gray-700 rounded-full ${height} overflow-hidden`}>
+            <div className={`${height} ${color} rounded-full transition-all duration-1000 ease-out`} style={{ width: `${width}%` }}></div>
+        </div>
+    );
+}
+
+// ==================== RATING BADGE ====================
+function RatingBadge({ rating }) {
+    const color = rating >= 8.5 ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" :
+                  rating >= 7.5 ? "bg-green-500/20 text-green-400 border-green-500/30" :
+                  "bg-blue-500/20 text-blue-400 border-blue-500/30";
+    return (
+        <span className={`px-2.5 py-1 rounded-lg text-xs font-black border ${color}`}>
+            {rating.toFixed(1)}
+        </span>
+    );
+}
+
+// ==================== NAVBAR ====================
+function Navbar({ currentPage, setCurrentPage }) {
+    const { darkMode, toggleDark } = useContext(ThemeContext);
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const [scrolled, setScrolled] = useState(false);
+
+    useEffect(() => {
+        const h = () => setScrolled(window.scrollY > 20);
+        window.addEventListener('scroll', h);
+        return () => window.removeEventListener('scroll', h);
+    }, []);
+
+    const navItems = [
+        { id:'home', label:'Home', icon:'fa-house' },
+        { id:'times', label:'Times', icon:'fa-shield-halved' },
+        { id:'nacoes', label:'Nacionalidades', icon:'fa-earth-americas' },
+        { id:'pesquisa', label:'Pesquisar', icon:'fa-magnifying-glass' },
+    ];
+
+    return (
+        <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? 'nav-blur bg-white/80 dark:bg-br-dark/90 shadow-lg border-b border-gray-200 dark:border-gray-800' : 'bg-transparent'}`}>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center justify-between h-16 lg:h-20">
+                    <button onClick={() => setCurrentPage('home')} className="flex items-center gap-3 group">
+                        <div className="relative">
+                            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-br-green to-br-gold rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-br-green/40 transition-all duration-300 group-hover:scale-110">
+                                <i className="fa-solid fa-binoculars text-white text-lg"></i>
+                            </div>
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-pulse border-2 border-white dark:border-br-dark"></div>
+                        </div>
+                        <div className="hidden sm:block">
+                            <h1 className={`text-lg lg:text-xl font-black tracking-tight transition-colors ${scrolled ? 'text-gray-900 dark:text-white' : 'text-white'}`}>
+                                BR<span className="text-br-green">Scout</span>
+                            </h1>
+                            <p className={`text-[10px] font-medium -mt-1 ${scrolled ? 'text-gray-500 dark:text-gray-400' : 'text-white/70'}`}>SCOUTING BRASILEIRÃO</p>
+                        </div>
+                    </button>
+
+                    <div className="hidden lg:flex items-center gap-1">
+                        {navItems.map(item => (
+                            <button key={item.id} onClick={() => setCurrentPage(item.id)}
+                                className={`relative px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 ${currentPage === item.id
+                                    ? 'bg-br-green/20 text-br-green'
+                                    : scrolled ? 'text-gray-600 dark:text-gray-300 hover:text-br-green hover:bg-br-green/10' : 'text-white/80 hover:text-white hover:bg-white/10'
+                                }`}
+                            >
+                                <i className={`fa-solid ${item.icon} mr-2`}></i>
+                                {item.label}
+                                {currentPage === item.id && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-br-green rounded-full"></div>}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <button onClick={toggleDark} className={`p-2.5 rounded-xl transition-all duration-300 hover:scale-110 ${scrolled ? 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800' : 'text-white/80 hover:bg-white/10'}`}>
+                            <i className={`fa-solid ${darkMode ? 'fa-sun' : 'fa-moon'} text-lg`}></i>
+                        </button>
+                        <button onClick={() => setCurrentPage('pesquisa')} className={`hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl transition-all hover:scale-105 ${scrolled ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300' : 'bg-white/10 text-white/80'}`}>
+                            <i className="fa-solid fa-search text-sm"></i>
+                            <span className="text-sm font-medium">Pesquisar Jogador</span>
+                        </button>
+                        <button onClick={() => setMobileOpen(!mobileOpen)} className={`lg:hidden p-2 rounded-xl ${scrolled ? 'text-gray-600 dark:text-gray-300' : 'text-white'}`}>
+                            <i className={`fa-solid ${mobileOpen ? 'fa-xmark' : 'fa-bars'} text-xl`}></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {mobileOpen && (
+                <div className="lg:hidden bg-white dark:bg-br-dark border-t dark:border-gray-800 animate-slide-down shadow-xl">
+                    <div className="px-4 py-3 space-y-1">
+                        {navItems.map(item => (
+                            <button key={item.id} onClick={() => { setCurrentPage(item.id); setMobileOpen(false); }}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${currentPage === item.id ? 'bg-br-green/10 text-br-green' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                            >
+                                <i className={`fa-solid ${item.icon} w-5`}></i>
+                                {item.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </nav>
+    );
+}
+
+// ==================== HOME SECTION ====================
+function HomeSection({ setCurrentPage, players }) {
+    const stats = useMemo(() => {
+        const topScorer = [...players].sort((a,b) => b.goals - a.goals)[0];
+        const topAssists = [...players].sort((a,b) => b.assists - a.assists)[0];
+        const avgRating = (players.reduce((s,p) => s+p.rating, 0)/players.length).toFixed(1);
+        return { topScorer, topAssists, avgRating, total: players.length, teams: new Set(players.map(p=>p.team)).size };
+    }, [players]);
+
+    return (
+        <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-900 via-slate-900 to-yellow-900/30"></div>
+            <div className="absolute inset-0 pitch-grid opacity-20"></div>
+
+            {/* Gradient Orbs */}
+            <div className="absolute top-20 right-20 w-96 h-96 bg-br-green/10 rounded-full blur-[120px] animate-pulse-slow"></div>
+            <div className="absolute bottom-20 left-20 w-80 h-80 bg-br-gold/10 rounded-full blur-[100px] animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
+
+            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+                <div className="text-center mb-16 animate-slide-up">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-white/90 text-sm font-medium mb-6 backdrop-blur-sm">
+                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                        Brasileirão Série A 2024 - Dados não atualizados
+                    </div>
+                    <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white leading-[1.1] mb-6">
+                        Scouting de<br/>
+                        <span className="text-gradient">Alto Nível</span>
+                    </h1>
+                    <p className="text-lg sm:text-xl text-white/70 mb-10 max-w-2xl mx-auto">
+                        Base de dados completa do campeonato brasileiro. Analise jogadores por time, nacionalidade ou utilize filtros avançados.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <button onClick={() => setCurrentPage('pesquisa')} className="px-8 py-4 bg-gradient-to-r from-br-green to-emerald-600 text-white font-bold rounded-2xl shadow-lg shadow-br-green/30 hover:shadow-br-green/50 transition-all duration-300 hover:scale-105">
+                            <i className="fa-solid fa-search mr-2"></i>Explorar Jogadores
+                        </button>
+                        <button onClick={() => setCurrentPage('times')} className="px-8 py-4 border-2 border-white/30 text-white font-bold rounded-2xl hover:bg-white/10 transition-all duration-300 hover:scale-105 backdrop-blur-sm">
+                            <i className="fa-solid fa-shield-halved mr-2"></i>Ver por Times
+                        </button>
+                    </div>
+                </div>
+
+                {/* Quick Stats */}
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-16 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                    {[
+                        { label:"Jogadores", value:stats.total, icon:"fa-users", color:"text-blue-400" },
+                        { label:"Clubes", value:stats.teams, icon:"fa-shield-halved", color:"text-br-green" },
+                        { label:"Média Rating", value:stats.avgRating, icon:"fa-star", color:"text-yellow-400" },
+                        { label:"Artilheiro", value:stats.topScorer.name, sub:`${stats.topScorer.goals} gols`, icon:"fa-futbol", color:"text-red-400" },
+                        { label:"Mais Assist.", value:stats.topAssists.name, sub:`${stats.topAssists.assists} assist.`, icon:"fa-hand-point-up", color:"text-purple-400" },
+                    ].map((s, i) => (
+                        <div key={i} className="glass rounded-2xl p-4 text-center card-hover cursor-pointer" onClick={() => setCurrentPage('pesquisa')}>
+                            <div className={`text-2xl mb-2 ${s.color}`}><i className={`fa-solid ${s.icon}`}></i></div>
+                            <div className="text-white font-black text-lg truncate">{s.value}</div>
+                            <div className="text-white/50 text-xs">{s.label}</div>
+                            {s.sub && <div className="text-white/40 text-[10px] mt-1">{s.sub}</div>}
+                        </div>
+                    ))}
+                </div>
+
+                {/* Featured Players */}
+                <div className="animate-slide-up" style={{ animationDelay: '0.4s' }}>
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-2xl font-bold text-white">Destaques da Rodada</h2>
+                        <button onClick={() => setCurrentPage('pesquisa')} className="text-br-green text-sm font-semibold hover:underline">Ver todos →</button>
+                    </div>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {[...players].sort((a,b) => b.rating - a.rating).slice(0,6).map(p => (
+                            <div key={p.id} className="glass rounded-2xl p-4 flex items-center gap-4 card-hover cursor-pointer" onClick={() => setCurrentPage('pesquisa')}>
+                                <div className="w-14 h-14 bg-gradient-to-br from-br-green to-emerald-800 rounded-xl flex items-center justify-center text-2xl shadow-lg">
+                                    {FLAGS[p.nationality] || "🇧"}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-white font-bold truncate">{p.name}</h3>
+                                        <RatingBadge rating={p.rating} />
+                                    </div>
+                                    <p className="text-white/50 text-sm">{p.position} • {p.team}</p>
+                                    <div className="flex gap-4 mt-2 text-xs text-white/60">
+                                        <span><i className="fa-solid fa-futbol mr-1 text-red-400"></i>{p.goals}</span>
+                                        <span><i className="fa-solid fa-hand-point-up mr-1 text-blue-400"></i>{p.assists}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
+// ==================== TEAMS SECTION ====================
+function TeamsSection({ players, setPlayers }) {
+    const [selectedTeam, setSelectedTeam] = useState(null);
+    const [showModal, setShowModal] = useState(false);
+    const [editing, setEditing] = useState(null);
+    const [form, setForm] = useState({ name:"", team:"", position:"ATA", nationality:"Brasil", rating:7.0, goals:0, assists:0, age:20 });
+
+    const teamPlayers = selectedTeam ? players.filter(p => p.team === selectedTeam) : [];
+
+    const handleSave = () => {
+        if (!form.name || !form.team) return;
+        if (editing) {
+            setPlayers(players.map(p => p.id === editing.id ? {...form, id:editing.id} : p));
+        } else {
+            setPlayers([...players, {...form, id: Date.now()}]);
+        }
+        setShowModal(false);
+        setEditing(null);
+        setForm({ name:"", team:"", position:"ATA", nationality:"Brasil", rating:7.0, goals:0, assists:0, age:20 });
+    };
+
+    const handleDelete = (id) => {
+        if (confirm("Tem certeza que deseja remover este jogador?")) {
+            setPlayers(players.filter(p => p.id !== id));
+        }
+    };
+
+    return (
+        <section className="pt-28 pb-20 min-h-screen bg-gray-50 dark:bg-br-dark">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center justify-between mb-8">
+                    <div>
+                        <h2 className="text-3xl font-black text-gray-900 dark:text-white">Clubes do Brasileirão</h2>
+                        <p className="text-gray-500 dark:text-gray-400 mt-1">Selecione um time para ver o elenco</p>
+                    </div>
+                    <button onClick={() => { setEditing(null); setShowModal(true); }} className="px-4 py-2 bg-br-green text-white rounded-xl font-semibold hover:bg-emerald-600 transition-colors shadow-lg shadow-br-green/20">
+                        <i className="fa-solid fa-plus mr-2"></i>Adicionar Jogador
+                    </button>
+                </div>
+
+                {/* Team Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-10">
+                    {TEAMS.map(team => {
+                        const count = players.filter(p => p.team === team).length;
+                        const isActive = selectedTeam === team;
+                        return (
+                            <button key={team} onClick={() => setSelectedTeam(isActive ? null : team)}
+                                className={`relative p-4 rounded-2xl border transition-all duration-300 card-hover text-left ${isActive
+                                    ? 'border-br-green bg-br-green/10 shadow-lg shadow-br-green/10'
+                                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-br-card hover:border-br-green/50'}`}
+                            >
+                                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${TEAM_COLORS[team] || 'from-gray-500 to-gray-700'} flex items-center justify-center mb-3 text-white font-bold text-lg shadow-md`}>
+                                    {team.substring(0,2).toUpperCase()}
+                                </div>
+                                <h3 className="font-bold text-gray-900 dark:text-white text-sm truncate">{team}</h3>
+                                <p className="text-xs text-gray-500 mt-1">{count} jogadores</p>
+                                {isActive && <div className="absolute top-2 right-2 w-2 h-2 bg-br-green rounded-full"></div>}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* Player List */}
+                {selectedTeam && (
+                    <div className="animate-slide-up">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Elenco: {selectedTeam}</h3>
+                            <span className="text-sm text-gray-500">{teamPlayers.length} atletas</span>
+                        </div>
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {teamPlayers.map(p => (
+                                <div key={p.id} className="bg-white dark:bg-br-card rounded-2xl border border-gray-200 dark:border-gray-700 p-4 card-hover relative group">
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center text-xl">
+                                                {FLAGS[p.nationality] || "🇧🇷"}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-gray-900 dark:text-white">{p.name}</h4>
+                                                <p className="text-xs text-gray-500">{p.position} • {p.age} anos</p>
+                                            </div>
+                                        </div>
+                                        <RatingBadge rating={p.rating} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 mb-3">
+                                        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 text-center">
+                                            <div className="text-lg font-black text-red-500">{p.goals}</div>
+                                            <div className="text-[10px] text-gray-500 uppercase">Gols</div>
+                                        </div>
+                                        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 text-center">
+                                            <div className="text-lg font-black text-blue-500">{p.assists}</div>
+                                            <div className="text-[10px] text-gray-500 uppercase">Assist.</div>
+                                        </div>
+                                    </div>
+                                    <ProgressBar value={p.rating} max={10} color="bg-br-green" height="h-1.5" />
+
+                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                        <button onClick={() => { setEditing(p); setForm(p); setShowModal(true); }} className="w-8 h-8 bg-blue-500/20 text-blue-500 rounded-lg flex items-center justify-center hover:bg-blue-500 hover:text-white transition-colors">
+                                            <i className="fa-solid fa-pen text-xs"></i>
+                                        </button>
+                                        <button onClick={() => handleDelete(p.id)} className="w-8 h-8 bg-red-500/20 text-red-500 rounded-lg flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors">
+                                            <i className="fa-solid fa-trash text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Modal */}
+                {showModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setShowModal(false)}>
+                        <div className="bg-white dark:bg-br-card rounded-3xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-lg shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">{editing ? "Editar Jogador" : "Novo Jogador"}</h3>
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <input type="text" placeholder="Nome" value={form.name} onChange={e => setForm({...form, name:e.target.value})} className="col-span-2 px-4 py-3 rounded-xl text-gray-900 dark:text-white dark:bg-gray-800" />
+                                <select value={form.team} onChange={e => setForm({...form, team:e.target.value})} className="px-4 py-3 rounded-xl text-gray-900 dark:text-white dark:bg-gray-800">
+                                    <option value="">Selecione o Time</option>
+                                    {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                                <select value={form.position} onChange={e => setForm({...form, position:e.target.value})} className="px-4 py-3 rounded-xl text-gray-900 dark:text-white dark:bg-gray-800">
+                                    {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                                </select>
+                                <select value={form.nationality} onChange={e => setForm({...form, nationality:e.target.value})} className="px-4 py-3 rounded-xl text-gray-900 dark:text-white dark:bg-gray-800">
+                                    {NATIONS.map(n => <option key={n} value={n}>{n}</option>)}
+                                </select>
+                                <input type="number" step="0.1" min="0" max="10" placeholder="Rating (0-10)" value={form.rating} onChange={e => setForm({...form, rating:parseFloat(e.target.value)})} className="px-4 py-3 rounded-xl text-gray-900 dark:text-white dark:bg-gray-800" />
+                                <input type="number" placeholder="Gols" value={form.goals} onChange={e => setForm({...form, goals:parseInt(e.target.value)})} className="px-4 py-3 rounded-xl text-gray-900 dark:text-white dark:bg-gray-800" />
+                                <input type="number" placeholder="Assistências" value={form.assists} onChange={e => setForm({...form, assists:parseInt(e.target.value)})} className="px-4 py-3 rounded-xl text-gray-900 dark:text-white dark:bg-gray-800" />
+                                <input type="number" placeholder="Idade" value={form.age} onChange={e => setForm({...form, age:parseInt(e.target.value)})} className="px-4 py-3 rounded-xl text-gray-900 dark:text-white dark:bg-gray-800" />
+                            </div>
+                            <div className="flex gap-3 justify-end">
+                                <button onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 font-medium">Cancelar</button>
+                                <button onClick={handleSave} className="px-6 py-2 bg-br-green text-white rounded-xl font-semibold hover:bg-emerald-600 transition-colors">Salvar</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </section>
+    );
+}
+
+// ==================== NATIONS SECTION ====================
+function NationsSection({ players }) {
+    const [selectedNation, setSelectedNation] = useState(null);
+
+    const nationCounts = useMemo(() => {
+        const counts = {};
+        players.forEach(p => { counts[p.nationality] = (counts[p.nationality] || 0) + 1; });
+        return counts;
+    }, [players]);
+
+    const filtered = selectedNation ? players.filter(p => p.nationality === selectedNation) : players;
+
+    return (
+        <section className="pt-28 pb-20 min-h-screen bg-gray-50 dark:bg-br-dark">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="mb-8">
+                    <h2 className="text-3xl font-black text-gray-900 dark:text-white">Nacionalidades</h2>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">Filtre jogadores por país de origem</p>
+                </div>
+
+                {/* Nation Chips */}
+                <div className="flex flex-wrap gap-3 mb-10">
+                    <button onClick={() => setSelectedNation(null)} className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${!selectedNation ? 'bg-br-green text-white shadow-lg' : 'bg-white dark:bg-br-card text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-br-green'}`}>
+                        Todos
+                    </button>
+                    {Object.keys(nationCounts).sort().map(nation => (
+                        <button key={nation} onClick={() => setSelectedNation(nation)} className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all ${selectedNation === nation ? 'bg-br-gold text-black shadow-lg' : 'bg-white dark:bg-br-card text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-br-gold'}`}>
+                            <span>{FLAGS[nation]}</span>
+                            <span>{nation}</span>
+                            <span className="bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded-full">{nationCounts[nation]}</span>
+                        </button>
+                    ))}
+                </div>
+
+                {/* Results */}
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-slide-up">
+                    {filtered.map(p => (
+                        <div key={p.id} className="bg-white dark:bg-br-card rounded-2xl border border-gray-200 dark:border-gray-700 p-4 card-hover">
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-2xl shadow-sm">
+                                    {FLAGS[p.nationality] || "🇷"}
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-900 dark:text-white">{p.name}</h3>
+                                    <p className="text-sm text-gray-500">{p.team} • {p.position}</p>
+                                </div>
+                                <div className="ml-auto"><RatingBadge rating={p.rating} /></div>
+                            </div>
+                            <div className="flex gap-4 text-sm">
+                                <span className="flex-1 text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                    <span className="block font-black text-red-500">{p.goals}</span>
+                                    <span className="text-[10px] text-gray-500">GOLS</span>
+                                </span>
+                                <span className="flex-1 text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                    <span className="block font-black text-blue-500">{p.assists}</span>
+                                    <span className="text-[10px] text-gray-500">ASSIST.</span>
+                                </span>
+                                <span className="flex-1 text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                    <span className="block font-black text-yellow-500">{p.age}</span>
+                                    <span className="text-[10px] text-gray-500">IDADE</span>
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
+}
+
+// ==================== SEARCH SECTION ====================
+function SearchSection({ players }) {
+    const [query, setQuery] = useState("");
+    const [filters, setFilters] = useState({ team:"", position:"", nation:"", minRating:0, maxRating:10 });
+    const [showFilters, setShowFilters] = useState(false);
+
+    const filtered = useMemo(() => {
+        return players.filter(p => {
+            const matchQuery = p.name.toLowerCase().includes(query.toLowerCase());
+            const matchTeam = !filters.team || p.team === filters.team;
+            const matchPos = !filters.position || p.position === filters.position;
+            const matchNation = !filters.nation || p.nationality === filters.nation;
+            const matchRating = p.rating >= filters.minRating && p.rating <= filters.maxRating;
+            return matchQuery && matchTeam && matchPos && matchNation && matchRating;
+        });
+    }, [players, query, filters]);
+
+    const resetFilters = () => {
+        setQuery("");
+        setFilters({ team:"", position:"", nation:"", minRating:0, maxRating:10 });
+    };
+
+    return (
+        <section className="pt-28 pb-20 min-h-screen bg-gray-50 dark:bg-br-dark">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-10">
+                    <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-2">Pesquisa Avançada</h2>
+                    <p className="text-gray-500 dark:text-gray-400">Encontre exatamente o jogador que procura</p>
+                </div>
+
+                {/* Search Bar */}
+                <div className="max-w-3xl mx-auto mb-6 relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                        <i className="fa-solid fa-search"></i>
+                    </div>
+                    <input type="text" placeholder="Buscar por nome do jogador..." value={query} onChange={e => setQuery(e.target.value)}
+                        className="w-full pl-12 pr-12 py-4 rounded-2xl text-lg bg-white dark:bg-br-card border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white shadow-lg focus:border-br-green transition-colors" />
+                    <button onClick={() => setShowFilters(!showFilters)} className={`absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl transition-colors ${showFilters ? 'bg-br-green text-white' : 'text-gray-400 hover:text-gray-600'}`}>
+                        <i className="fa-solid fa-sliders"></i>
+                    </button>
+                </div>
+
+                {/* Filters */}
+                {showFilters && (
+                    <div className="max-w-3xl mx-auto mb-8 glass p-6 rounded-2xl animate-slide-down">
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                            <select value={filters.team} onChange={e => setFilters({...filters, team:e.target.value})} className="px-4 py-2 rounded-xl text-sm text-gray-900 dark:text-white dark:bg-gray-800">
+                                <option value="">Todos os Times</option>
+                                {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                            <select value={filters.position} onChange={e => setFilters({...filters, position:e.target.value})} className="px-4 py-2 rounded-xl text-sm text-gray-900 dark:text-white dark:bg-gray-800">
+                                <option value="">Todas Posições</option>
+                                {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                            </select>
+                            <select value={filters.nation} onChange={e => setFilters({...filters, nation:e.target.value})} className="px-4 py-2 rounded-xl text-sm text-gray-900 dark:text-white dark:bg-gray-800">
+                                <option value="">Todas Nacionalidades</option>
+                                {NATIONS.map(n => <option key={n} value={n}>{n}</option>)}
+                            </select>
+                            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                <span className="text-xs text-gray-500">Rating:</span>
+                                <input type="range" min="0" max="10" step="0.5" value={filters.maxRating} onChange={e => setFilters({...filters, maxRating:parseFloat(e.target.value)})} className="flex-1 accent-br-green" />
+                                <span className="text-sm font-bold text-br-green w-8">{filters.maxRating}</span>
+                            </div>
+                        </div>
+                        <button onClick={resetFilters} className="text-sm text-br-green font-semibold hover:underline">Limpar filtros</button>
+                    </div>
+                )}
+
+                {/* Results Count */}
+                <div className="max-w-6xl mx-auto mb-6 flex items-center justify-between">
+                    <span className="text-gray-500 dark:text-gray-400 text-sm">{filtered.length} jogadores encontrados</span>
+                    {filtered.length > 0 && <span className="text-xs text-gray-400">Ordenado por rating ↓</span>}
+                </div>
+
+                {/* Results Grid */}
+                <div className="max-w-6xl mx-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-slide-up">
+                    {[...filtered].sort((a,b) => b.rating - a.rating).map(p => (
+                        <div key={p.id} className="bg-white dark:bg-br-card rounded-2xl border border-gray-200 dark:border-gray-700 p-5 card-hover relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-br-green to-transparent"></div>
+                            <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center text-xl">
+                                        {FLAGS[p.nationality] || "🇧"}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900 dark:text-white text-lg">{p.name}</h3>
+                                        <p className="text-xs text-gray-500">{p.team} • {p.position} • {p.age} anos</p>
+                                    </div>
+                                </div>
+                                <RatingBadge rating={p.rating} />
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 mb-3">
+                                <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                    <div className="text-lg font-black text-red-500">{p.goals}</div>
+                                    <div className="text-[10px] text-gray-500 uppercase tracking-wide">Gols</div>
+                                </div>
+                                <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                    <div className="text-lg font-black text-blue-500">{p.assists}</div>
+                                    <div className="text-[10px] text-gray-500 uppercase tracking-wide">Assist.</div>
+                                </div>
+                                <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                    <div className="text-lg font-black text-yellow-500">{p.age}</div>
+                                    <div className="text-[10px] text-gray-500 uppercase tracking-wide">Idade</div>
+                                </div>
+                            </div>
+                            <ProgressBar value={p.rating} max={10} color="bg-gradient-to-r from-br-green to-br-gold" height="h-2" />
+                            <div className="flex justify-between text-xs text-gray-400 mt-1">
+                                <span>Potencial Scout</span>
+                                <span>{p.rating}/10</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {filtered.length === 0 && (
+                    <div className="text-center py-20">
+                        <div className="text-6xl mb-4 opacity-20">🔍</div>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Nenhum jogador encontrado</h3>
+                        <p className="text-gray-500">Tente ajustar os filtros ou buscar por outro nome</p>
+                        <button onClick={resetFilters} className="mt-4 px-4 py-2 bg-br-green text-white rounded-xl font-semibold hover:bg-emerald-600 transition-colors">Limpar Pesquisa</button>
+                    </div>
+                )}
+            </div>
+        </section>
+    );
+}
+
+// ==================== FOOTER ====================
+function Footer() {
+    return (
+        <footer className="bg-white dark:bg-br-card border-t border-gray-200 dark:border-gray-800 py-12">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-br-green to-br-gold rounded-xl flex items-center justify-center shadow-lg">
+                            <i className="fa-solid fa-binoculars text-white"></i>
+                        </div>
+                        <div>
+                            <h3 className="font-black text-lg text-gray-900 dark:text-white">BR<span className="text-br-green">Scout</span></h3>
+                            <p className="text-xs text-gray-500">Scouting Inteligente do Brasileirão</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-6 text-sm text-gray-500 dark:text-gray-400">
+                        <a href="#" className="hover:text-br-green transition-colors">Sobre</a>
+                        <a href="#" className="hover:text-br-green transition-colors">API Docs</a>
+                        <a href="#" className="hover:text-br-green transition-colors">Contato</a>
+                        <a href="#" className="hover:text-br-green transition-colors">Termos</a>
+                    </div>
+                    <p className="text-xs text-gray-400">© 2026 BRScout. Dados para fins de scouting e análise.</p>
+                </div>
+            </div>
+        </footer>
+    );
+}
+
+// ==================== MAIN APP ====================
+function App() {
+    const [darkMode, setDarkMode] = useState(true);
+    const [currentPage, setCurrentPage] = useState('home');
+    const [players, setPlayers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // Carregar jogadores do backend ao iniciar
+    useEffect(() => {
+        const fetchPlayers = async () => {
+            try {
+                setLoading(true);
+                const data = await api.getPlayers();
+                setPlayers(data);
+                setError(null);
+            } catch (err) {
+                console.error('Erro ao buscar jogadores:', err);
+                setError('Não foi possível carregar os dados. Verifique se o backend está rodando.');
+                setPlayers([]);
+            } finally {
+                setTimeout(() => setLoading(false), 500);
+            }
+        };
+        fetchPlayers();
+    }, []);
+
+    useEffect(() => {
+        if (darkMode) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
+    }, [darkMode]);
+
+    const toggleDark = () => setDarkMode(!darkMode);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-br-dark">
+                <div className="text-center">
+                    <div className="relative w-20 h-20 mx-auto mb-6">
+                        <div className="absolute inset-0 bg-gradient-to-br from-br-green to-br-gold rounded-2xl animate-spin" style={{ animationDuration: '2s' }}></div>
+                        <div className="absolute inset-1 bg-br-dark rounded-xl flex items-center justify-center">
+                            <i className="fa-solid fa-binoculars text-br-green text-2xl"></i>
+                        </div>
+                    </div>
+                    <h2 className="text-xl font-black text-white mb-2">BR<span className="text-br-green">Scout</span></h2>
+                    <p className="text-gray-400 text-sm">Carregando base de dados...</p>
+                    <div className="mt-4 w-48 h-1.5 bg-gray-800 rounded-full overflow-hidden mx-auto">
+                        <div className="h-full bg-gradient-to-r from-br-green to-br-gold rounded-full animate-shimmer" style={{ width: '70%' }}></div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-br-dark">
+                <div className="text-center max-w-md px-4">
+                    <div className="w-20 h-20 mx-auto mb-6 bg-red-500/20 rounded-2xl flex items-center justify-center">
+                        <i className="fa-solid fa-triangle-exclamation text-red-500 text-3xl"></i>
+                    </div>
+                    <h2 className="text-xl font-black text-white mb-2">Erro de Conexão</h2>
+                    <p className="text-gray-400 text-sm mb-6">{error}</p>
+                    <button 
+                        onClick={() => window.location.reload()}
+                        className="px-6 py-3 bg-gradient-to-r from-br-green to-emerald-600 text-white font-bold rounded-xl hover:scale-105 transition-all"
+                    >
+                        <i className="fa-solid fa-rotate-right mr-2"></i>Tentar Novamente
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <ThemeContext.Provider value={{ darkMode, toggleDark }}>
+            <div className="min-h-screen transition-colors duration-500">
+                <Navbar currentPage={currentPage} setCurrentPage={setCurrentPage} />
+                
+                {currentPage === 'home' && <HomeSection setCurrentPage={setCurrentPage} players={players} />}
+                {currentPage === 'times' && <TeamsSection players={players} setPlayers={setPlayers} />}
+                {currentPage === 'nacoes' && <NationsSection players={players} />}
+                {currentPage === 'pesquisa' && <SearchSection players={players} />}
+                
+                <Footer />
+            </div>
+        </ThemeContext.Provider>
+    );
+}
+
+export default App;
