@@ -1,7 +1,6 @@
 package com.brscout.brscout.Controller;
 
 import com.brscout.brscout.Model.PlayerModel;
-import com.brscout.brscout.Repository.PlayerRepository;
 import com.brscout.brscout.Service.PlayerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -12,6 +11,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("player")
+@CrossOrigin(origins = "*")
 public class PlayerController {
 
     private final PlayerService playerService;
@@ -48,8 +48,9 @@ public class PlayerController {
         return new ResponseEntity<>(createdPlayer, HttpStatus.CREATED);
     }
 
-    @PutMapping
-    public ResponseEntity<PlayerModel> updatePlayer(@RequestBody PlayerModel playerModel){
+    @PutMapping("/{id}")
+    public ResponseEntity<PlayerModel> updatePlayer(@PathVariable Long id, @RequestBody PlayerModel playerModel){
+        playerModel.setId(id);
         PlayerModel resultPlayer = playerService.updatePlayer(playerModel);
         if(resultPlayer != null){
             return new ResponseEntity<>(resultPlayer, HttpStatus.OK);
@@ -59,9 +60,9 @@ public class PlayerController {
         }
     }
 
-    @DeleteMapping("/{playerName}")
-    public ResponseEntity<String> deletePlayer(@PathVariable String playerName){
-        playerService.deletePlayer(playerName);
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deletePlayer(@PathVariable Long id){
+        playerService.deletePlayer(id);
         return new ResponseEntity<>("Player deleted successfully", HttpStatus.OK);
     }
 }
