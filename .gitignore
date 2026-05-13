@@ -1,50 +1,48 @@
 ```
+# Build artifacts
+frontend/dist/
+target/
+
 # Dependencies
 node_modules/
 
-# Build artifacts
-dist/
-build/
-target/
-
-# Environment
-.env
-.env.local
-.env.*
-
-# IDE
+# IDE files
 .vscode/
 .idea/
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.py.class
-*.py.obj
-*.py.out
+# Compiled Java classes
+**/*.class
+
+# Maven
+.mvn/
+mvnw*
+
+# Temporary files
+*.tmp
+*.swp
 
 # Logs
 *.log
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Coverage
+# Coverage reports
 coverage/
 htmlcov/
 .coverage
 
-# Gradle
-.gradle/
+# Environment files
+.env
+.env.local
+*.env.*
 
-# Temporary files
-*.tmp
-*.temp
-*.swp
-*.swo
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
 # Compressed files
 *.zip

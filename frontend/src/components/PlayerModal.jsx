@@ -1,99 +1,106 @@
-import { useState } from 'react'
+import { useState } from 'react';
+import { useLanguage } from '../context/LanguageContext';
+import PlayerAvatar from './PlayerAvatar';
+import RatingBadge from './RatingBadge';
 
-function PlayerModal({ showModal, editingPlayer, formData, setFormData, darkMode, onClose, onSubmit }) {
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    onSubmit(formData)
-  }
+function PlayerModal({ player, onClose, onEdit, onDelete, t }) {
+  if (!player) return null;
 
-  if (!showModal) return null
+  const normalizeRating = (rating) => {
+    if (!rating) return 0;
+    return rating > 10 ? (rating / 10).toFixed(1) : rating.toFixed(1);
+  };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 w-full max-w-md`}>
-        <h2 className="text-2xl font-bold mb-4">
-          {editingPlayer ? 'Editar Jogador' : 'Adicionar Jogador'}
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Nome</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className={`w-full px-4 py-2 border rounded-lg ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-              required
-            />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+      <div className="bg-white dark:bg-br-card rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="relative h-48 bg-gradient-to-br from-br-green to-emerald-800 rounded-t-3xl">
+          <button onClick={onClose} className="absolute top-4 right-4 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors">
+            <i className="fa-solid fa-xmark text-xl"></i>
+          </button>
+          <div className="absolute -bottom-12 left-8">
+            <PlayerAvatar player={player} size="xl" />
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Time</label>
-            <input
-              type="text"
-              value={formData.teamName}
-              onChange={(e) => setFormData({ ...formData, teamName: e.target.value })}
-              className={`w-full px-4 py-2 border rounded-lg ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-              required
-            />
+        </div>
+
+        {/* Content */}
+        <div className="pt-16 px-8 pb-8">
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <h2 className="text-3xl font-black text-gray-900 dark:text-white">{player.name}</h2>
+              <p className="text-gray-500 dark:text-gray-400">{player.position} • {player.teamName}</p>
+            </div>
+            <RatingBadge rating={normalizeRating(player.rating)} />
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Número da Camisa</label>
-            <input
-              type="number"
-              value={formData.number}
-              onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-              className={`w-full px-4 py-2 border rounded-lg ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-              required
-            />
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-4 text-center">
+              <div className="text-3xl font-black text-red-500">{player.goals}</div>
+              <div className="text-xs text-gray-500 uppercase mt-1">{t.player.info.goals}</div>
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-4 text-center">
+              <div className="text-3xl font-black text-blue-500">{player.assists}</div>
+              <div className="text-xs text-gray-500 uppercase mt-1">{t.player.info.assists}</div>
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-4 text-center">
+              <div className="text-3xl font-black text-yellow-500">{player.age}</div>
+              <div className="text-xs text-gray-500 uppercase mt-1">{t.player.info.age}</div>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Nacionalidade</label>
-            <input
-              type="text"
-              value={formData.nation}
-              onChange={(e) => setFormData({ ...formData, nation: e.target.value })}
-              className={`w-full px-4 py-2 border rounded-lg ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-              required
-            />
+
+          {/* Info List */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <i className="fa-solid fa-shield-halved text-gray-400 w-6"></i>
+              <div>
+                <div className="text-xs text-gray-500">{t.player.info.team}</div>
+                <div className="font-semibold text-gray-900 dark:text-white">{player.teamName}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <i className="fa-solid fa-earth-americas text-gray-400 w-6"></i>
+              <div>
+                <div className="text-xs text-gray-500">{t.player.info.nationality}</div>
+                <div className="font-semibold text-gray-900 dark:text-white">{player.nation}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <i className="fa-solid fa-user text-gray-400 w-6"></i>
+              <div>
+                <div className="text-xs text-gray-500">{t.player.info.position}</div>
+                <div className="font-semibold text-gray-900 dark:text-white">{player.position}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <i className="fa-solid fa-shirt text-gray-400 w-6"></i>
+              <div>
+                <div className="text-xs text-gray-500">{t.player.info.number}</div>
+                <div className="font-semibold text-gray-900 dark:text-white">#{player.number}</div>
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Posição</label>
-            <input
-              type="text"
-              value={formData.position}
-              onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-              className={`w-full px-4 py-2 border rounded-lg ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Idade</label>
-            <input
-              type="number"
-              value={formData.age}
-              onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-              className={`w-full px-4 py-2 border rounded-lg ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-              required
-            />
-          </div>
-          <div className="flex space-x-2 pt-4">
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-            >
-              Salvar
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
+
+          {/* Actions */}
+          {(onEdit || onDelete) && (
+            <div className="flex gap-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+              {onEdit && (
+                <button onClick={() => onEdit(player)} className="flex-1 px-4 py-3 bg-br-green text-white rounded-xl font-semibold hover:bg-emerald-600 transition-colors">
+                  <i className="fa-solid fa-pen mr-2"></i>{t.common.edit}
+                </button>
+              )}
+              {onDelete && (
+                <button onClick={() => onDelete(player.id)} className="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition-colors">
+                  <i className="fa-solid fa-trash mr-2"></i>{t.common.delete}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default PlayerModal
+export default PlayerModal;

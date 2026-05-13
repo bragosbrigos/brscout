@@ -1,0 +1,5 @@
+com/brscout/brscout/Model/PlayerModel.class
+com/brscout/brscout/Service/PlayerService.class
+com/brscout/brscout/Repository/PlayerRepository.class
+com/brscout/brscout/Controller/PlayerController.class
+com/brscout/brscout/BrScoutApplication.class

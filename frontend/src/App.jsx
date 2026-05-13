@@ -1,173 +1,206 @@
-import { useState, useEffect } from 'react'
-import Header from './components/Header'
-import HomePage from './components/HomePage'
-import TeamsPage from './components/TeamsPage'
-import NationsPage from './components/NationsPage'
-import SearchPage from './components/SearchPage'
-import PlayerModal from './components/PlayerModal'
-import { fetchPlayers, deletePlayer, savePlayer } from './utils/api'
+import { useState, useEffect } from 'react';
+import { ThemeProvider } from './context/ThemeContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
+import Navbar from './components/Navbar';
+import HomeSection from './components/HomeSection';
+import TeamsSection from './components/TeamsSection';
+import NationsSection from './components/NationsSection';
+import SearchSection from './components/SearchSection';
+import EditSection from './components/EditSection';
+import Footer from './components/Footer';
+import PlayerModal from './components/PlayerModal';
+import { api } from './utils/api';
 
-function App() {
-  const [darkMode, setDarkMode] = useState(false)
-  const [currentPage, setCurrentPage] = useState('home')
-  const [players, setPlayers] = useState([])
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedTeam, setSelectedTeam] = useState('')
-  const [selectedPosition, setSelectedPosition] = useState('')
-  const [selectedNation, setSelectedNation] = useState('')
-  const [showModal, setShowModal] = useState(false)
-  const [editingPlayer, setEditingPlayer] = useState(null)
-  const [formData, setFormData] = useState({
-    name: '',
-    teamName: '',
-    number: '',
-    nation: '',
-    position: '',
-    age: ''
-  })
+function AppContent() {
+  const { language, t, toggleLanguage } = useLanguage();
+  const [currentPage, setCurrentPage] = useState('home');
+  const [players, setPlayers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingPlayer, setEditingPlayer] = useState(null);
 
+  // Carregar jogadores do backend
   useEffect(() => {
-    loadPlayers()
-  }, [])
+    loadPlayers();
+  }, []);
 
   const loadPlayers = async () => {
     try {
-      const data = await fetchPlayers()
-      setPlayers(data)
-    } catch (error) {
-      console.error('Error fetching players:', error)
+      setLoading(true);
+      setError(null);
+      const data = await api.getPlayers();
+      setPlayers(data);
+    } catch (err) {
+      setError(err.message);
+      console.error('Erro ao carregar jogadores:', err);
+    } finally {
+      setLoading(false);
     }
-  }
-
-  const filteredPlayers = players.filter(player => {
-    const matchesSearch = player.name.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesTeam = selectedTeam === '' || player.teamName.toLowerCase().includes(selectedTeam.toLowerCase())
-    const matchesPosition = selectedPosition === '' || player.position.toLowerCase().includes(selectedPosition.toLowerCase())
-    const matchesNation = selectedNation === '' || player.nation.toLowerCase().includes(selectedNation.toLowerCase())
-    return matchesSearch && matchesTeam && matchesPosition && matchesNation
-  })
-
-  const teams = [...new Set(players.map(p => p.teamName))].filter(Boolean).sort()
-  const positions = [...new Set(players.map(p => p.position))].filter(Boolean).sort()
-  const nations = [...new Set(players.map(p => p.nation))].filter(Boolean).sort()
-
-  const handleAddPlayer = () => {
-    setEditingPlayer(null)
-    setFormData({
-      name: '',
-      teamName: '',
-      number: '',
-      nation: '',
-      position: '',
-      age: ''
-    })
-    setShowModal(true)
-  }
-
-  const handleEditPlayer = (player) => {
-    setEditingPlayer(player)
-    setFormData({
-      name: player.name,
-      teamName: player.teamName,
-      number: player.number,
-      nation: player.nation,
-      position: player.position,
-      age: player.age || ''
-    })
-    setShowModal(true)
-  }
+  };
 
   const handleDeletePlayer = async (id) => {
+    if (!window.confirm(t.edit.confirmDelete)) return;
     try {
-      await deletePlayer(id)
-      loadPlayers()
-    } catch (error) {
-      console.error('Error deleting player:', error)
+      await api.deletePlayer(id);
+      setPlayers(players.filter(p => p.id !== id));
+      if (selectedPlayer && selectedPlayer.id === id) {
+        setSelectedPlayer(null);
+      }
+    } catch (err) {
+      alert('Erro ao remover jogador: ' + err.message);
     }
+  };
+
+  const handleSavePlayer = async (playerData) => {
+    try {
+      if (editingPlayer) {
+        const updated = await api.updatePlayer(editingPlayer.id, playerData);
+        setPlayers(players.map(p => p.id === updated.id ? updated : p));
+        if (selectedPlayer && selectedPlayer.id === updated.id) {
+          setSelectedPlayer(updated);
+        }
+      } else {
+        const created = await api.addPlayer(playerData);
+        setPlayers([...players, created]);
+      }
+      setShowEditModal(false);
+      setEditingPlayer(null);
+    } catch (err) {
+      alert('Erro ao salvar jogador: ' + err.message);
+    }
+  };
+
+  const handleEditClick = (player) => {
+    setEditingPlayer(player);
+    setShowEditModal(true);
+  };
+
+  const openPlayerModal = (player) => {
+    setSelectedPlayer(player);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-br-green border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-lg">Carregando...</p>
+        </div>
+      </div>
+    );
   }
 
-  const handleSubmit = async (data) => {
-    try {
-      await savePlayer(data, editingPlayer)
-      setShowModal(false)
-      loadPlayers()
-    } catch (error) {
-      console.error('Error saving player:', error)
-    }
-  }
-
-  const handleCloseModal = () => {
-    setShowModal(false)
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center text-white">
+          <i className="fa-solid fa-triangle-exclamation text-5xl text-red-500 mb-4"></i>
+          <p className="text-xl mb-4">Erro ao carregar dados</p>
+          <button onClick={loadPlayers} className="px-6 py-3 bg-br-green rounded-xl font-semibold">
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}>
-      <Header 
-        darkMode={darkMode} 
-        setDarkMode={setDarkMode} 
+    <div className="min-h-screen bg-gray-50 dark:bg-br-dark transition-colors">
+      <Navbar 
         currentPage={currentPage} 
-        setCurrentPage={setCurrentPage} 
+        setCurrentPage={setCurrentPage}
+        language={language}
+        t={t}
+        toggleLanguage={toggleLanguage}
       />
+      
+      {currentPage === 'home' && (
+        <HomeSection 
+          players={players} 
+          setCurrentPage={setCurrentPage}
+          t={t}
+          onPlayerClick={openPlayerModal}
+        />
+      )}
+      
+      {currentPage === 'times' && (
+        <TeamsSection 
+          players={players} 
+          setPlayers={setPlayers}
+          t={t}
+          onPlayerClick={openPlayerModal}
+          onEditClick={handleEditClick}
+          onDeleteClick={handleDeletePlayer}
+        />
+      )}
+      
+      {currentPage === 'nacoes' && (
+        <NationsSection 
+          players={players}
+          t={t}
+          onPlayerClick={openPlayerModal}
+        />
+      )}
+      
+      {currentPage === 'pesquisa' && (
+        <SearchSection 
+          players={players}
+          t={t}
+          onPlayerClick={openPlayerModal}
+        />
+      )}
+      
+      {currentPage === 'editar' && (
+        <EditSection
+          players={players}
+          setPlayers={setPlayers}
+          t={t}
+          onPlayerClick={openPlayerModal}
+          onEditClick={handleEditClick}
+          onDeleteClick={handleDeletePlayer}
+          onAddClick={() => { setEditingPlayer(null); setShowEditModal(true); }}
+        />
+      )}
 
-      <main className="container mx-auto px-4 py-8">
-        {currentPage === 'home' && (
-          <HomePage 
-            players={filteredPlayers}
-            darkMode={darkMode}
-            onAddPlayer={handleAddPlayer}
-            onEditPlayer={handleEditPlayer}
-            onDeletePlayer={handleDeletePlayer}
-          />
-        )}
+      <Footer t={t} />
 
-        {currentPage === 'teams' && (
-          <TeamsPage 
-            teams={teams}
-            players={players}
-            darkMode={darkMode}
-          />
-        )}
+      {/* Modal de Detalhes do Jogador */}
+      {selectedPlayer && (
+        <PlayerModal 
+          player={selectedPlayer}
+          onClose={() => setSelectedPlayer(null)}
+          onEdit={handleEditClick}
+          onDelete={handleDeletePlayer}
+          t={t}
+        />
+      )}
 
-        {currentPage === 'nations' && (
-          <NationsPage 
-            nations={nations}
-            players={players}
-            darkMode={darkMode}
-          />
-        )}
-
-        {currentPage === 'search' && (
-          <SearchPage 
-            filteredPlayers={filteredPlayers}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            selectedTeam={selectedTeam}
-            setSelectedTeam={setSelectedTeam}
-            selectedPosition={selectedPosition}
-            setSelectedPosition={setSelectedPosition}
-            selectedNation={selectedNation}
-            setSelectedNation={setSelectedNation}
-            teams={teams}
-            positions={positions}
-            nations={nations}
-            darkMode={darkMode}
-            onEditPlayer={handleEditPlayer}
-            onDeletePlayer={handleDeletePlayer}
-          />
-        )}
-      </main>
-
-      <PlayerModal 
-        showModal={showModal}
-        editingPlayer={editingPlayer}
-        formData={formData}
-        setFormData={setFormData}
-        darkMode={darkMode}
-        onClose={handleCloseModal}
-        onSubmit={handleSubmit}
-      />
+      {/* Modal de Edição/Criação */}
+      {showEditModal && (
+        <EditSection
+          players={players}
+          setPlayers={setPlayers}
+          t={t}
+          editingPlayer={editingPlayer}
+          onSave={handleSavePlayer}
+          onCancel={() => { setShowEditModal(false); setEditingPlayer(null); }}
+          isModalOnly={true}
+        />
+      )}
     </div>
-  )
+  );
 }
 
-export default App
+function App() {
+  return (
+    <ThemeProvider>
+      <LanguageProvider>
+        <AppContent />
+      </LanguageProvider>
+    </ThemeProvider>
+  );
+}
+
+export default App;

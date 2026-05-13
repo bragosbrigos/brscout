@@ -41,5 +41,17 @@ services:
       - brnet
     restart: on-failure
 
+  frontend:
+    build: ./frontend
+    container_name: brscout-frontend
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    networks:
+      - brnet
+    environment:
+      VITE_API_URL: http://api:8080
+
 networks:
   brnet:

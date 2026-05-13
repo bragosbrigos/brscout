@@ -1,0 +1,5 @@
+/workspace/src/main/java/com/brscout/brscout/BrScoutApplication.java
+/workspace/src/main/java/com/brscout/brscout/Controller/PlayerController.java
+/workspace/src/main/java/com/brscout/brscout/Model/PlayerModel.java
+/workspace/src/main/java/com/brscout/brscout/Repository/PlayerRepository.java
+/workspace/src/main/java/com/brscout/brscout/Service/PlayerService.java
